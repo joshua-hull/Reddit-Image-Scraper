@@ -1,0 +1,48 @@
+#!/usr/bin/perl
+
+#	Reddit Image Scraper: A perl script to download images hosted on 
+#	the imgur.com hosting service linked from a subreddit at reddit.com
+#	Copyright (C) 2011 Joshua Hull
+
+#	This program is free software: you can redistribute it and/or modify 
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation, either version 3 of the License, or
+#	(at your option) any later version.
+#
+#	This program is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+use strict;
+use JSON;
+use WWW::Mechanize;
+
+if ($#ARGV < 1){
+	die "Usage: ./Reddit_Image_Scraper Subreddit ...\n";
+}
+
+for (my $i = 0; $i <= $#ARGV; $i++){
+	my $url = "http://www.reddit.com/r/" . $ARGV[$i] . "/.json?limit=1000";
+	print "Downloading from http://www.reddit.com/" . $ARGV[$i] . "\n";
+	my $mech = WWW::Mechanize->new;
+	$mech->get($url);
+	my $json_string = $mech->text();
+
+	my $json = new JSON;
+	my $json_text = $json->allow_nonref->utf8->relaxed->decode($json_string);
+	my $posts = $json_text->{data}->{children};	
+	foreach my $post(@{$posts}){
+		my $domain = $post->{data}->{domain};
+		my $url = $post->{data}->{url};
+		if ( $domain =~ m/i.imgur.com/){
+			my $file_name = substr $url, -9;
+			print "      Downloading $url\n";
+			system("curl -o $ARGV[$i]/$file_name --create-dirs -s $url");
+			print "      Done.\n";
+		}
+	}
+}
