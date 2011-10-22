@@ -44,7 +44,7 @@ foreach my $arg (@ARGV) {
         if ( $domain =~ m/i.imgur.com/){
             my $file_name = substr $url, -9;
             print "      Downloading $url\n";
-            $mech->get($url,':content_file' => "$arg/$file_name");
+            $mech->mirror($url, "$arg/$file_name");
             print "      Done.\n";
         }
     }
