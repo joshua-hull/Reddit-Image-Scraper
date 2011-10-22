@@ -17,7 +17,7 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use strict;
+use v5.14;
 use warnings;
 use JSON;
 use WWW::Mechanize;
@@ -26,26 +26,29 @@ die "Usage: $0 subreddit [...]\n" unless @ARGV;
 
 foreach my $arg (@ARGV) {
 
-    # Create the directory if necessary.
     mkdir $arg unless -d $arg;
 
-    my $url = "http://www.reddit.com/r/$arg/.json?limit=1000";
-    print "Downloading from http://www.reddit.com/r/$arg\n";
+    my $url = "http://www.reddit.com/r/$arg";
+    say "Downloading from '$url'";
+
     my $mech = WWW::Mechanize->new;
-    $mech->get($url);
-    my $json_string = $mech->text();
+    $mech->get("$url/.json?limit=1000");
+    my $json_string = $mech->text;
 
     my $json = JSON->new;
     my $json_text = $json->allow_nonref->utf8->relaxed->decode($json_string);
-    my $posts = $json_text->{data}->{children}; 
-    foreach my $post (@{$posts}) {
+
+  POST:
+    foreach my $post (@{$json_text->{data}->{children}}) {
         my $domain = $post->{data}->{domain};
-        my $url = $post->{data}->{url};
-        if ( $domain =~ m/i.imgur.com/){
-            my $file_name = substr $url, -9;
-            print "      Downloading $url\n";
-            $mech->mirror($url, "$arg/$file_name");
-            print "      Done.\n";
-        }
+        next POST unless $domain =~ m/i\.imgur\.com/;
+
+        my $image_url = $post->{data}->{url};
+        my($file_name) = $image_url =~ m{([^/]*)\Z};
+        next POST unless defined $file_name;
+
+        say "      Downloading $image_url";
+        $mech->mirror($image_url, "$arg/$file_name");
+        say "      Done.";
     }
 }
