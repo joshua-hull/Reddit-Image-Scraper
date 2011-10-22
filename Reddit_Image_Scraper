@@ -39,14 +39,11 @@ foreach my $arg (@ARGV) {
     foreach my $post (@{$posts}) {
         my $domain = $post->{data}->{domain};
         my $url = $post->{data}->{url};
-        if ( $domain =~ m/i.imgur.com/){
-            my $file_name = substr $url, -9;
-	    if (-f "$arg/$file_name"){
-	    } else {
-            	print "      Downloading $url\n";
-            	$mech->get($url,':content_file' => "$arg/$file_name");
-            	print "      Done.\n";
-	    }
-        }
-    }
+        next unless $domain =~ m/i.imgur.com/;
+        my $file_name = substr $url, -9;
+	next unless !(-f "$arg/$file_name");
+	print "      Downloading $url\n";
+        $mech->get($url,':content_file' => "$arg/$file_name");
+        print "      Done.\n";
+	}
 }
