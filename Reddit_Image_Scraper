@@ -33,10 +33,8 @@ foreach my $arg (@ARGV) {
     print "Downloading from http://www.reddit.com/r/$arg\n";
     my $mech = WWW::Mechanize->new;
     $mech->get($url);
-    my $json_string = $mech->text();
 
-    my $json = JSON->new;
-    my $json_text = $json->allow_nonref->utf8->relaxed->decode($json_string);
+    my $json_text = JSON->new->allow_nonref->utf8->relaxed->decode($mech->text);
     my $posts = $json_text->{data}->{children}; 
     foreach my $post (@{$posts}) {
         my $domain = $post->{data}->{domain};
