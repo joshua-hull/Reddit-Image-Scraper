@@ -38,14 +38,13 @@ foreach my $arg (@ARGV) {
     my $json = JSON->new;
     my $json_text = $json->allow_nonref->utf8->relaxed->decode($json_string);
 
-  POST:
     foreach my $post (@{$json_text->{data}->{children}}) {
         my $domain = $post->{data}->{domain};
-        next POST unless $domain =~ m/i\.imgur\.com/;
+        next unless $domain =~ m/i\.imgur\.com/;
 
         my $image_url = $post->{data}->{url};
         my($file_name) = $image_url =~ m{([^/]*)\Z};
-        next POST unless defined $file_name;
+        next unless defined $file_name;
 
         say "      Downloading $image_url";
         $mech->mirror($image_url, "$arg/$file_name");
