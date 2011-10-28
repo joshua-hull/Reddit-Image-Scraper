@@ -23,3 +23,14 @@ imgur.com image hosting site. Be aware that this script can chew
 through bandwidth quickly, especially if given a large list of
 subreddits. Please be curtious of the bandwidth of both reddit.com
 and imgur.com. Let's keep these two free resouces just that: free.
+
+Prune.sh:
+
+Usage: ./Prune.sh [min # of photos]
+		or
+       ./Prune.sh -1
+
+Prune.sh is a shell script to help maintain a collection of directories
+created from Reddit_Image_Scrpaer. Running Prune.sh with a positive number 
+will delete any directory with less than that number of photos. Running it
+with a -1 will list all the directorys and the number of photos in them.
