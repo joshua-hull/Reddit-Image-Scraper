@@ -31,7 +31,7 @@ foreach my $arg (@ARGV) {
 
     my $url = "http://www.reddit.com/r/$arg/.json?limit=1000";
     print "Downloading from http://www.reddit.com/r/$arg\n";
-    my $mech = WWW::Mechanize->new;
+    my $mech = WWW::Mechanize->new(autocheck=>0);
     $mech->get($url);
 
     my $json_text = JSON->new->allow_nonref->utf8->relaxed->decode($mech->text);
