@@ -31,6 +31,13 @@ my $status = $window -> Label(-textvariable => \$status_string) -> pack();
 my $download_button = $window -> Button(-text => "DOWNLOAD!", -command =>\&download_subbreddit_dummy) -> pack();
 my $subbreddit_entry = $window ->Entry() -> pack();
 my $file_open = $window -> Button(-text => "Open Files...",-command =>\&open_file_dialog)-> pack();
+
+#  Menu Bar configuration
+my $menu = $window -> Menu();
+$window -> configure(-menu => $menu);
+my $file = $menu -> cascade(-label=>"File", -underline=>0, -tearoff =>0 );
+$file -> command(-label => "New Subbreddit", -underline=>0,-command=>\&open_file_dialog );
+
 $status_string = "Ready...";
 
 MainLoop;
