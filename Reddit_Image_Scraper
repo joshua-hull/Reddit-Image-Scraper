@@ -41,7 +41,13 @@ sub download_subbreddit_dummy {
 }
 
 sub open_file_dialog {
-	$window->getOpenFile;
+	my $current = $window->chooseDirectory;
+	if (defined($current)) {
+		$status_string = "Updating $current...";
+	}
+	else {
+		$status_string = "Cancled selection.";
+	}
 }
 
 sub download_subbreddit {
