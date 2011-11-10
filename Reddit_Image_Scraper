@@ -26,17 +26,22 @@ use Tk;
 my $subbreddit;
 
 my $window = new MainWindow;
-#TODO: Fix $status since user can edit it. Consider using a popup or a label.
-my $status = $window -> Entry(-state=>"normal") -> pack();
+my $status_string;
+my $status = $window -> Label(-textvariable => \$status_string) -> pack();
 my $download_button = $window -> Button(-text => "DOWNLOAD!", -command =>\&download_subbreddit_dummy) -> pack();
 my $subbreddit_entry = $window ->Entry() -> pack();
+my $file_open = $window -> Button(-text => "Open Files...",-command =>\&open_file_dialog)-> pack();
+$status_string = "Ready...";
 
 MainLoop;
 
 sub download_subbreddit_dummy {
 	my $subbreddit = $subbreddit_entry -> get();
-	print $subbreddit;
-	$status -> insert(0,"Downloading from $subbreddit...");
+	$status_string = "Downloading from $subbreddit...";
+}
+
+sub open_file_dialog {
+	$window->getOpenFile;
 }
 
 sub download_subbreddit {
