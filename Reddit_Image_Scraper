@@ -24,41 +24,22 @@ use WWW::Mechanize;
 use Tk;
 
 my $subbreddit;
+my $new_subbreddit;
 
 my $window = new MainWindow;
 my $status_string;
-my $status = $window -> Label(-textvariable => \$status_string) -> pack();
-my $download_button = $window -> Button(-text => "DOWNLOAD!", -command =>\&download_subbreddit_dummy) -> pack();
-my $subbreddit_entry = $window ->Entry() -> pack();
-my $file_open = $window -> Button(-text => "Open Files...",-command =>\&open_file_dialog)-> pack();
-
-#  Menu Bar configuration
-my $menu = $window -> Menu();
-$window -> configure(-menu => $menu);
-my $file = $menu -> cascade(-label=>"File", -underline=>0, -tearoff =>0 );
-$file -> command(-label => "New Subbreddit", -underline=>0,-command=>\&open_file_dialog );
+my $status = $window -> Label(-textvariable => \$status_string) -> grid(-row=>3,-column=>1,-sticky=>"w");
+my $update_button = $window -> Button(-text => "Update", -command=>sub{$status_string = "Updating $subbreddit.";}) -> grid(-row=>1,-column=>2,-sticky=>"w");
+my $new_entry = $window ->Entry(-textvariable=>\$new_subbreddit) -> grid(-row=>2,-column=>1,-sticky=>"w");
+my $new_button = $window -> Button(-text => "Add",-command =>sub{$status_string = "Adding $new_subbreddit";})-> grid(-row=>2,-column=>2,-sticky=>"w");
+my $reddits = $window -> Optionmenu(-options=>[qw(Hello Goodbye Thanks)],-variable =>\$subbreddit) -> grid(-row=>1,-column=>1,-sticky=>"w");
 
 $status_string = "Ready...";
 
 MainLoop;
 
-sub download_subbreddit_dummy {
-	my $subbreddit = $subbreddit_entry -> get();
-	$status_string = "Downloading from $subbreddit...";
-}
-
-sub open_file_dialog {
-	my $current = $window->chooseDirectory;
-	if (defined($current)) {
-		$status_string = "Updating $current...";
-	}
-	else {
-		$status_string = "Cancled selection.";
-	}
-}
-
 sub download_subbreddit {
-    my $subbreddit = $subbreddit_entry -> get(); 
+    my $subbreddit = @_; 
     mkdir $subbreddit unless -d $subbreddit;
     my $url = "http://www.reddit.com/r/$subbreddit/.json?limit=1000";
     print "Downloading from http://www.reddit.com/r/$subbreddit\n";
