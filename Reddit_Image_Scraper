@@ -50,7 +50,7 @@ sub download_image {
     ( -e "$arg/$file_name" )
       ? print "     Skipping $url (copy found)\n"
       : print "     Downloading $url as $file_name\n";
-    $mech->get( $url, ':content_file' => "$arg/$file_name" );
+    $mech->get( $url, ':content_file' => "$arg/$file_name" ) || return;
     print "      Done.\n";
 }
 
@@ -69,6 +69,6 @@ sub scrape_album {
         my ($img) = ($url =~ m@imgur\.com/([^\.#]+)@i);
         return unless $img;
         $mech->follow_link( url_regex => qr/$img/i );
-        download_image( $mech->uri );
+        download_image( $mech->uri, $arg );
     }
 }
