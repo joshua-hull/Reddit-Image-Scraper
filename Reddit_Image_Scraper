@@ -24,6 +24,8 @@ use WWW::Mechanize;
 
 die "Usage: $0 subreddit [...]\n" unless @ARGV;
 
+my $mech = WWW::Mechanize->new(autocheck=>0);
+
 foreach my $arg (@ARGV) {
 
     # Create the directory if necessary.
@@ -31,19 +33,42 @@ foreach my $arg (@ARGV) {
 
     my $url = "http://www.reddit.com/r/$arg/.json?limit=1000";
     print "Downloading from http://www.reddit.com/r/$arg\n";
-    my $mech = WWW::Mechanize->new(autocheck=>0);
     $mech->get($url);
 
     my $json_text = JSON->new->allow_nonref->utf8->relaxed->decode($mech->text);
     my $posts = $json_text->{data}->{children}; 
     foreach my $post (@{$posts}) {
-        my $domain = $post->{data}->{domain};
         my $url = $post->{data}->{url};
-        next unless $domain =~ m/i.imgur.com/;
-        my $file_name = substr $url, -9;
-	next unless !(-f "$arg/$file_name");
-	print "      Downloading $url\n";
-        $mech->get($url,':content_file' => "$arg/$file_name");
-        print "      Done.\n";
+        download_image($url, $arg) if $url =~ m@imgur.com/[^\.]+\.@i;
+        scrape_album($url, $arg) if $url =~ m@imgur.com/(?:a/)?[^\.]+$@i;
 	}
+}
+
+sub download_image {
+    my ( $url, $arg ) = @_;
+    my ($file_name) = ($url =~ m@imgur\.com/(?:a/)?(.+)$@i);
+    ( -e "$arg/$file_name" )
+      ? print "     Skipping $url (copy found)\n"
+      : print "     Downloading $url as $file_name\n";
+    $mech->get( $url, ':content_file' => "$arg/$file_name" );
+    print "      Done.\n";
+}
+
+sub scrape_album {
+    my ( $url, $arg ) = @_;
+    print "     Found album $url\n";
+
+    $mech->get($url);
+    if ( my ($json) = ( $mech->content =~ m@images:\s+(.+?),\s*cover:@is ) ) {
+        my $struct = JSON->new->allow_nonref->utf8->relaxed->decode($json);
+        map {
+            download_image( 'http://imgur.com/' . $_->{hash} . $_->{ext}, $arg )
+        } @{ $struct->{items} };
+    }
+    else {    #otherwise, we've just found a page like http://imgur.com/aOLy2
+        my ($img) = ($url =~ m@imgur\.com/([^\.#]+)@i);
+        return unless $img;
+        $mech->follow_link( url_regex => qr/$img/i );
+        download_image( $mech->uri );
+    }
 }
