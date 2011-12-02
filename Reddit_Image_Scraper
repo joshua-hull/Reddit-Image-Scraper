@@ -50,7 +50,7 @@ sub download_image {
     ( -e "$arg/$file_name" )
       ? print "     Skipping $url (copy found)\n"
       : print "     Downloading $url as $file_name\n";
-    $mech->get( $url, ':content_file' => "$arg/$file_name" ) || return;
+    $mech->get( $url, ':content_file' => "$arg/$file_name" );
     print "      Done.\n";
 }
 
