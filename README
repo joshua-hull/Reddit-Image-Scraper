@@ -2,6 +2,8 @@ Reddit Image Scraper: A perl script to download images hosted on
 the imgur.com hosting service linked from a subreddit at reddit.com
 Copyright (C) 2011 Joshua Hull
 
+[![endorse](http://api.coderwall.com/joshua-hull/endorsecount.png)](http://coderwall.com/joshua-hull)
+
 This program is free software: you can redistribute it and/or modify 
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
