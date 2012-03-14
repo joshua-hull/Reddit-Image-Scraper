@@ -36,3 +36,7 @@ Prune.sh is a shell script to help maintain a collection of directories
 created from Reddit_Image_Scrpaer. Running Prune.sh with a positive number 
 will delete any directory with less than that number of photos. Running it
 with a -1 will list all the directorys and the number of photos in them.
+
+You can find more information on installing Perl on your computer system at [Perl.org](http://www.perl.org/get.html "Perl.org")
+
+You can find information on using Perl at [Perl.org](http://www.perl.org/get.html "Perl.org")
