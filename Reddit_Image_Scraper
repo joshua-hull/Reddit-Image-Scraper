@@ -1,10 +1,10 @@
 #!/usr/bin/env perl
 
-#   Reddit Image Scraper: A perl script to download images hosted on 
+#   Reddit Image Scraper: A perl script to download images hosted on
 #   the imgur.com hosting service linked from a subreddit at reddit.com
 #   Copyright (C) 2011 Joshua Hull
 
-#   This program is free software: you can redistribute it and/or modify 
+#   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
 #   the Free Software Foundation, either version 3 of the License, or
 #   (at your option) any later version.
@@ -36,7 +36,7 @@ foreach my $arg (@ARGV) {
     $mech->get($url);
 
     my $json_text = JSON->new->allow_nonref->utf8->relaxed->decode($mech->text);
-    my $posts = $json_text->{data}->{children}; 
+    my $posts = $json_text->{data}->{children};
     foreach my $post (@{$posts}) {
         my $url = $post->{data}->{url};
         download_image($url, $arg) if $url =~ m@imgur.com/[^\.]+\.@i;
@@ -46,12 +46,14 @@ foreach my $arg (@ARGV) {
 
 sub download_image {
     my ( $url, $arg ) = @_;
-    my ($file_name) = ($url =~ m@imgur\.com/(?:a/)?(.+)$@i);
-    ( -e "$arg/$file_name" )
-      ? print "     Skipping $url (copy found)\n"
-      : print "     Downloading $url as $file_name\n";
-    $mech->get( $url, ':content_file' => "$arg/$file_name" );
-    print "      Done.\n";
+    if ( my ($file_name) = ( $url =~ m@imgur\.com/(?:a/)?(.+)$@i ) ) {
+        ( -e "$arg/$file_name" )
+          ? print "     Skipping $url (copy found)\n"
+          : print "     Downloading $url as $file_name\n";
+        $mech->get( $url, ':content_file' => "$arg/$file_name" );
+        print "      Done.\n";
+    }
+    else { print "     Couldn't determine file name\n"; }
 }
 
 sub scrape_album {
@@ -60,10 +62,13 @@ sub scrape_album {
 
     $mech->get($url);
     if ( my ($json) = ( $mech->content =~ m@images:\s+(.+?),\s*cover:@is ) ) {
-        my $struct = JSON->new->allow_nonref->utf8->relaxed->decode($json);
-        map {
+        if ( my $struct =
+            eval { JSON->new->allow_nonref->utf8->relaxed->decode($json) } )
+        {
             download_image( 'http://imgur.com/' . $_->{hash} . $_->{ext}, $arg )
-        } @{ $struct->{items} };
+              for @{ $struct->{items} };
+        }
+        else { print "     Problem fetching JSON\n"; }
     }
     else {    #otherwise, we've just found a page like http://imgur.com/aOLy2
         my ($img) = ($url =~ m@imgur\.com/([^\.#]+)@i);
