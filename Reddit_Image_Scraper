@@ -23,35 +23,58 @@ use warnings;
 use JSON;
 use WWW::Mechanize;
 use URI;
+#use Getopt::Long;
+
+use constant INTERVAL => 2;
 
 die "Usage: $0 subreddit [...]\n" unless @ARGV;
+
+# number of images to extract for each subreddit
+# TODO let's use GetOptions to pass a limit
+my $limit = 1000;
 
 my $mech = WWW::Mechanize->new(autocheck=>0);
 
 foreach my $sub (@ARGV) {
 
-    my @links;
-
     # Create the directory if necessary.
     mkdir $sub unless -d $sub;
 
     my $url = "http://www.reddit.com/r/$sub/.json?limit=100";
-    $mech->get($url);
 
-    my $json_text = JSON->new->allow_nonref->utf8->relaxed->decode($mech->text);
-    my $posts     = $json_text->{data}->{children};
-    foreach my $post (@{$posts}) {
-        my $uri = URI->new($post->{data}->{url}) or next;
-        ## remove any paramters such as http://i.imgur.com/K7EdYrV.jpg?1
-        $uri->query_form({});
-        push @links, get_image_links($uri->as_string);
+    my @links;
+
+    do {
+        $mech->get($url);
+        my $json_text = JSON->new->allow_nonref->utf8->relaxed->decode($mech->text);
+        my $posts     = $json_text->{data}->{children};
+        foreach my $post (@{$posts}) {
+            my $uri = URI->new($post->{data}->{url}) or next;
+            ## remove any paramters such as http://i.imgur.com/K7EdYrV.jpg?1
+            $uri->query_form({});
+            push @links, get_image_links($uri->as_string) if @links < $limit;
+        }
+        # get next page
+        $url = get_next_page($json_text->{data}{after}, $url);
+        sleep INTERVAL;
     }
+    while($url and @links < $limit);
 
-    print 'Extracted ' . @links . " images for download\n";
+    print 'Extracted ' . @links . " images for download from r/$sub\n";
     foreach my $img (@links) {
         print 'Downloading ' . $img->{url} . "\n";
         $mech->get($img->{url}, ':content_file' => "$sub/" . $img->{file_name});
+        sleep INTERVAL;
     }
+}
+
+sub get_next_page {
+    my ($after, $url) = @_;
+    return undef unless $after;
+    my $uri  = URI->new($url);
+    my %form = $uri->query_form;
+    $uri->query_form({limit => $form{limit}, after => $after});
+    return $uri->as_string;
 }
 
 sub get_image_links {
