@@ -19,61 +19,65 @@
 
 use strict;
 use warnings;
+
 use JSON;
 use WWW::Mechanize;
+use URI;
 
 die "Usage: $0 subreddit [...]\n" unless @ARGV;
 
 my $mech = WWW::Mechanize->new(autocheck=>0);
 
-foreach my $arg (@ARGV) {
+foreach my $sub (@ARGV) {
+
+    my @links;
 
     # Create the directory if necessary.
-    mkdir $arg unless -d $arg;
+    mkdir $sub unless -d $sub;
 
-    my $url = "http://www.reddit.com/r/$arg/.json?limit=1000";
-    print "Downloading from http://www.reddit.com/r/$arg\n";
+    my $url = "http://www.reddit.com/r/$sub/.json?limit=100";
     $mech->get($url);
 
     my $json_text = JSON->new->allow_nonref->utf8->relaxed->decode($mech->text);
-    my $posts = $json_text->{data}->{children};
+    my $posts     = $json_text->{data}->{children};
     foreach my $post (@{$posts}) {
-        my $url = $post->{data}->{url};
-        download_image($url, $arg) if $url =~ m@imgur.com/[^\.]+\.@i;
-        scrape_album($url, $arg) if $url =~ m@imgur.com/(?:a/)?[^\.]+$@i;
-	}
-}
-
-sub download_image {
-    my ( $url, $arg ) = @_;
-    if ( my ($file_name) = ( $url =~ m@imgur\.com/(?:a/)?(.+)$@i ) ) {
-        ( -e "$arg/$file_name" )
-          ? print "     Skipping $url (copy found)\n"
-          : print "     Downloading $url as $file_name\n";
-        $mech->get( $url, ':content_file' => "$arg/$file_name" );
-        print "      Done.\n";
+        my $uri = URI->new($post->{data}->{url}) or next;
+        ## remove any paramters such as http://i.imgur.com/K7EdYrV.jpg?1
+        $uri->query_form({});
+        push @links, get_image_links($uri->as_string);
     }
-    else { print "     Couldn't determine file name\n"; }
+
+    print 'Extracted ' . @links . " images for download\n";
+    foreach my $img (@links) {
+        print 'Downloading ' . $img->{url} . "\n";
+        $mech->get($img->{url}, ':content_file' => "$sub/" . $img->{file_name});
+    }
 }
 
-sub scrape_album {
-    my ( $url, $arg ) = @_;
-    print "     Found album $url\n";
-
-    $mech->get($url);
-    if ( my ($json) = ( $mech->content =~ m@images:\s+(.+?),\s*cover:@is ) ) {
-        if ( my $struct =
-            eval { JSON->new->allow_nonref->utf8->relaxed->decode($json) } )
-        {
-            download_image( 'http://imgur.com/' . $_->{hash} . $_->{ext}, $arg )
-              for @{ $struct->{items} };
+sub get_image_links {
+    my ($url) = @_;
+    my @images;
+    if ($url =~ m{ imgur\.com/a/ [^/]+ /?$ }ix) {
+        my ($json) = ($mech->content =~ m{ images: \s+ (.+?) ,\s* cover: }isx);
+        my $struct = eval { $json && JSON->new->allow_nonref->utf8->relaxed->decode($json) };
+        if ($struct) {
+            foreach my $item (@{$struct->{items}}) {
+                my %info;
+                $info{file_name} = $item->{hash} . $item->{ext};
+                $info{url} = 'http://imgur.com/' . $info{file_name};
+                push @images, \%info if $info{url} && $info{file_name};
+            }
         }
-        else { print "     Problem fetching JSON\n"; }
     }
-    else {    #otherwise, we've just found a page like http://imgur.com/aOLy2
-        my ($img) = ($url =~ m@imgur\.com/([^\.#]+)@i);
-        return unless $img;
-        $mech->follow_link( url_regex => qr/$img/i );
-        download_image( $mech->uri, $arg );
+    elsif ($url =~ m{ imgur\.com/ ([^/\.]+) (\. [^/\.]+)? /?$ }ix) {
+        my %info;
+        unless ($2) {
+            $mech->follow_link( url_regex => qr/$1/i );
+            $url = $mech->uri;
+        }
+        $info{url} = $url;
+        ($info{file_name}) = $url =~ m{ imgur\.com/([^/]+) }ix;
+        push @images, \%info if $info{url} && $info{file_name};
     }
+    return @images;
 }
