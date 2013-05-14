@@ -23,28 +23,38 @@ use warnings;
 use JSON;
 use WWW::Mechanize;
 use URI;
-#use Getopt::Long;
+use Getopt::Std;
 
 use constant INTERVAL => 2;
 
-die "Usage: $0 subreddit [...]\n" unless @ARGV;
-
 # number of images to extract for each subreddit
 # TODO let's use GetOptions to pass a limit
-my $limit = 1000;
+my $limit = 100;
 
 my $mech = WWW::Mechanize->new(autocheck=>0);
+
+$Getopt::Std::STANDARD_HELP_VERSION = 1;
+getopts('u');
+our($opt_u);
 
 foreach my $sub (@ARGV) {
 
     # Create the directory if necessary.
-    mkdir $sub unless -d $sub;
+    our($url,@links,$directory);
+    our $count = 0;
+    if($opt_u){
+	$directory = "user_".$sub;
+	$url = "http://www.reddit.com/user/$sub/.json?limit=100"
+    }
+    else{
+	$directory = $sub;
+	$url = "http://www.reddit.com/r/$sub/.json?limit=100";
+    }
 
-    my $url = "http://www.reddit.com/r/$sub/.json?limit=100";
+    print "Directory: $directory\nURL: $url\n";
+    mkdir $directory unless -e $directory;
 
-    my @links;
-
-    do {
+       do {
         $mech->get($url);
         my $json_text = JSON->new->allow_nonref->utf8->relaxed->decode($mech->text);
         my $posts     = $json_text->{data}->{children};
@@ -55,16 +65,21 @@ foreach my $sub (@ARGV) {
             push @links, get_image_links($uri->as_string) if @links < $limit;
         }
         # get next page
-        $url = get_next_page($json_text->{data}{after}, $url);
-        sleep INTERVAL;
+        $url = get_next_page($json_text->{data}{after}, $url,$count);
+        print "url: $url\n";
+   	sleep INTERVAL;
     }
     while($url and @links < $limit);
 
-    print 'Extracted ' . @links . " images for download from r/$sub\n";
+    if($opt_u){
+	print "Extracted ".@links." images from user $sub\n";
+    } else {
+	print 'Extracted ' . @links . " images for download from r/$sub\n";
+    }
     foreach my $img (@links) {
-	unless (-e "$sub/" . $img->{file_name}) {
+	unless (-e "$directory/" . $img->{file_name}) {
         	print 'Downloading ' . $img->{url} . "\n";
-        	$mech->get($img->{url}, ':content_file' => "$sub/" . $img->{file_name});
+        	$mech->get($img->{url}, ':content_file' => "$directory/" . $img->{file_name});
         	sleep INTERVAL;
     }
 	else{
@@ -78,7 +93,13 @@ sub get_next_page {
     return undef unless $after;
     my $uri  = URI->new($url);
     my %form = $uri->query_form;
-    $uri->query_form({limit => $form{limit}, after => $after});
+    my $count = $_[2];
+    $_[2] = $_[2] + 100;
+    if($opt_u){
+	 $uri->query_form({limit =>$form{limit},after => $after,count=>$count});
+    } else {
+    	$uri->query_form({limit => $form{limit}, after => $after});
+    }
     return $uri->as_string;
 }
 
@@ -109,3 +130,13 @@ sub get_image_links {
     }
     return @images;
 }
+
+sub HELP_MESSAGE {
+    print "Reddit-Image-Scraper subreddit [subreddit2 subreddit3 ...]\n";
+    print "Reddit-Image-Scraper -u username\n";
+}
+
+sub VERSION_MESSAGE {
+    print "Reddit-Image-Scrapper version 2013.05.14\n";
+}
+
