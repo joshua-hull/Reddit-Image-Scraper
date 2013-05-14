@@ -27,15 +27,12 @@ use Getopt::Std;
 
 use constant INTERVAL => 2;
 
-# number of images to extract for each subreddit
-# TODO let's use GetOptions to pass a limit
-my $limit = 1000;
-
 my $mech = WWW::Mechanize->new(autocheck=>0);
 
 $Getopt::Std::STANDARD_HELP_VERSION = 1;
-getopts('u');
-our($opt_u);
+getopts('ul:');
+our($opt_u,$opt_l);
+my $limit = $opt_l || 1000;
 
 foreach my $sub (@ARGV) {
 
@@ -129,8 +126,9 @@ sub get_image_links {
 }
 
 sub HELP_MESSAGE {
-    print "Reddit-Image-Scraper subreddit [subreddit2 subreddit3 ...]\n";
-    print "Reddit-Image-Scraper -u username\n";
+    print "Flags\n";
+    print "\t-l limit : limit the number of pictures to download. Default: 1000\n";
+    print "\t-u : process a list of users instead of a list of subreddits.\n";
 }
 
 sub VERSION_MESSAGE {

@@ -17,8 +17,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-Usage: ./Reddit_Image_Scraper subbreddit1 [subbreddit 2 subreddit3 ...]  
-       ./Reddit_Image_Scraper -u username1 [username2 username3 ...]
+Usage: ./Reddit_Image_Scraper [-l limit] [-u] subbreddit1|username1 [subbreddit2|username2 subreddit3|username3 ...]
 
 Reddit Image Scraper is a perl script designed to read in one or more
 subreddits and download all the images in it that are hosted on the
