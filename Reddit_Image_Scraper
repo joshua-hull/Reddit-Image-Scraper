@@ -62,9 +62,14 @@ foreach my $sub (@ARGV) {
 
     print 'Extracted ' . @links . " images for download from r/$sub\n";
     foreach my $img (@links) {
-        print 'Downloading ' . $img->{url} . "\n";
-        $mech->get($img->{url}, ':content_file' => "$sub/" . $img->{file_name});
-        sleep INTERVAL;
+	unless (-e "$sub/" . $img->{file_name}) {
+        	print 'Downloading ' . $img->{url} . "\n";
+        	$mech->get($img->{url}, ':content_file' => "$sub/" . $img->{file_name});
+        	sleep INTERVAL;
+    }
+	else{
+		print "File already exists..." . $img->{file_name} . "\n";
+	}
     }
 }
 
