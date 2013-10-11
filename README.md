@@ -10,6 +10,7 @@ below. A QR Code has been provided for convenience:
 Address: 1PF95G1gpdsKDwEbVmUwbEy89azf7amT2R
 
 QR Code:
+
 ![QR Code](http://github.com/joshua-hull/Reddit-Image-Scraper/raw/master/qrcode.jpg "Bitcoin QR Code")
 
 This program is free software: you can redistribute it and/or modify 
