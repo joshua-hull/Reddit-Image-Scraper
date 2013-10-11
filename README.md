@@ -1,8 +1,16 @@
 Reddit Image Scraper: A perl script to download images hosted on 
 the imgur.com hosting service linked from a subreddit at reddit.com
-Copyright (C) 2011 Joshua Hull
+Copyright (C) 2013 Joshua Hull
 
 [![endorse](http://api.coderwall.com/joshua-hull/endorsecount.png)](http://coderwall.com/joshua-hull)
+
+The author will happily accept any donations of Bitcoins at the address shown
+below. A QR Code has been provided for convenience:
+
+Address: 1PF95G1gpdsKDwEbVmUwbEy89azf7amT2R
+
+QR Code:
+![QR Code](http://github.com/joshua-hull/Reddit-Image-Scraper/raw/master/qrcode.jpg "Bitcoin QR Code")
 
 This program is free software: you can redistribute it and/or modify 
 it under the terms of the GNU General Public License as published by
@@ -17,13 +25,13 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-Usage: ./Reddit_Image_Scraper [-l limit] [-u] subbreddit1|username1 [subbreddit2|username2 subreddit3|username3 ...]
+Usage: ./Reddit_Image_Scraper [-l limit] [-u] [-q] subbreddit1|username1|query1 [subbreddit2|username2|query2 ...]
 
 Reddit Image Scraper is a perl script designed to read in one or more
 subreddits and download all the images in it that are hosted on the
 imgur.com image hosting site. Be aware that this script can chew 
 through bandwidth quickly, especially if given a large list of
-subreddits. Please be curtious of the bandwidth of both reddit.com
+subreddits. Please be courteous of the bandwidth of both reddit.com
 and imgur.com. Let's keep these two free resouces just that: free.
 
 Prune.sh:

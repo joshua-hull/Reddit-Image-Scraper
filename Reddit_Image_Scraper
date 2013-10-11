@@ -2,7 +2,7 @@
 
 #   Reddit Image Scraper: A perl script to download images hosted on
 #   the imgur.com hosting service linked from a subreddit at reddit.com
-#   Copyright (C) 2011 Joshua Hull
+#   Copyright (C) 2013 Joshua Hull
 
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -30,8 +30,8 @@ use constant INTERVAL => 2;
 my $mech = WWW::Mechanize->new(autocheck=>0);
 
 $Getopt::Std::STANDARD_HELP_VERSION = 1;
-getopts('ul:');
-our($opt_u,$opt_l);
+getopts('ul:q');
+our($opt_u,$opt_l,$opt_q);
 my $limit = $opt_l || 1000;
 
 foreach my $sub (@ARGV) {
@@ -40,16 +40,21 @@ foreach my $sub (@ARGV) {
     our($url,@links,$directory);
     our $count = 0;
     if($opt_u){
-	$directory = "user_".$sub;
-	$url = "http://www.reddit.com/user/$sub/.json?limit=100"
+	    $directory = "user_".$sub;
+	    $url = "http://www.reddit.com/user/$sub/.json?limit=100"
+    }
+    elsif($opt_q){
+        $sub =~ s/\s/+/g;
+        $directory = "search_".$sub;
+        $url = "http://www.reddit.com/search/.json?q=$sub&limit=100";
+        print "$url\n";
     }
     else{
-	$directory = $sub;
-	$url = "http://www.reddit.com/r/$sub/.json?limit=100";
+	    $directory = $sub;
+	    $url = "http://www.reddit.com/r/$sub/.json?limit=100";
     }
     mkdir $directory unless -e $directory;
-
-       do {
+    do {
         $mech->get($url);
         my $json_text = JSON->new->allow_nonref->utf8->relaxed->decode($mech->text);
         my $posts     = $json_text->{data}->{children};
@@ -61,24 +66,26 @@ foreach my $sub (@ARGV) {
         }
         # get next page
         $url = get_next_page($json_text->{data}{after}, $url,$count);
-   	sleep INTERVAL;
+   	    sleep INTERVAL;
     }
     while($url and @links < $limit);
 
     if($opt_u){
-	print "Extracted ".@links." images from user $sub\n";
+        print "Extracted ".@links." images from user $sub\n";
+    } elsif($opt_q){
+        print "Extracted ".@links." images from the search: $sub\n";
     } else {
-	print 'Extracted ' . @links . " images for download from r/$sub\n";
+	    print 'Extracted ' . @links . " images for download from r/$sub\n";
     }
     foreach my $img (@links) {
-	unless (-e "$directory/" . $img->{file_name}) {
+	    unless (-e "$directory/" . $img->{file_name}) {
         	print 'Downloading ' . $img->{url} . "\n";
         	$mech->get($img->{url}, ':content_file' => "$directory/" . $img->{file_name});
         	sleep INTERVAL;
     }
-	else{
-		print "File already exists..." . $img->{file_name} . "\n";
-	}
+	    else{
+		    print "File already exists..." . $img->{file_name} . "\n";
+	    }
     }
 }
 
@@ -129,9 +136,9 @@ sub HELP_MESSAGE {
     print "Flags\n";
     print "\t-l limit : limit the number of pictures to download. Default: 1000\n";
     print "\t-u : process a list of users instead of a list of subreddits.\n";
+    print "\t-q : process a list of search strings. Strings may contain spaces but these must be escaped with \\ or enclosed in \"\"\n"
 }
 
 sub VERSION_MESSAGE {
-    print "Reddit-Image-Scrapper version 2013.05.14\n";
+    print "Reddit-Image-Scrapper version 2013.10.11\n";
 }
-
