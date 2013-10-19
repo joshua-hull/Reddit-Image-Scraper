@@ -145,5 +145,5 @@ sub HELP_MESSAGE {
 }
 
 sub VERSION_MESSAGE {
-    print "Reddit-Image-Scrapper version 2013.10.11\n";
+    print "Reddit-Image-Scrapper version ".$version_string."\n";
 }
