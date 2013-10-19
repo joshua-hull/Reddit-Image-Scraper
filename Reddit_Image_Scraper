@@ -27,7 +27,11 @@ use Getopt::Std;
 
 use constant INTERVAL => 2;
 
-my $mech = WWW::Mechanize->new(autocheck=>0);
+my $version_string = "2013.10.18";
+
+my $user_agent = "Reddit_Image_Scraper/".$version_string." by /u/hyperspace290";
+
+my $mech = WWW::Mechanize->new(autocheck=>0,agent=>$user_agent);
 
 $Getopt::Std::STANDARD_HELP_VERSION = 1;
 getopts('ul:q');
@@ -87,6 +91,7 @@ foreach my $sub (@ARGV) {
 		    print "File already exists..." . $img->{file_name} . "\n";
 	    }
     }
+    undef @links;
 }
 
 sub get_next_page {
