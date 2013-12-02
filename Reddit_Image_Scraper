@@ -61,11 +61,17 @@ foreach my $sub (@ARGV) {
     do {
         $mech->get($url);
         my $json_text = JSON->new->allow_nonref->utf8->relaxed->decode($mech->text);
-        my $posts     = $json_text->{data}->{children};
-        foreach my $post (@{$posts}) {
+
+        # pull in all non-self posts
+        # we could also add a filter for only imgur domains
+        # but that depends on what sites we intend to scrape from
+        my @posts = grep { !$_->{data}{is_self} } @{$json_text->{data}->{children}};
+        foreach my $post (@posts) {
             my $uri = URI->new($post->{data}->{url}) or next;
             ## remove any paramters such as http://i.imgur.com/K7EdYrV.jpg?1
             $uri->query_form({});
+            ## remove uri fragments like #foo
+            $uri->fragment(undef);
             push @links, get_image_links($uri->as_string) if @links < $limit;
         }
         # get next page
@@ -82,11 +88,15 @@ foreach my $sub (@ARGV) {
 	    print 'Extracted ' . @links . " images for download from r/$sub\n";
     }
     foreach my $img (@links) {
-	    unless (-e "$directory/" . $img->{file_name}) {
-        	print 'Downloading ' . $img->{url} . "\n";
-        	$mech->get($img->{url}, ':content_file' => "$directory/" . $img->{file_name});
-        	sleep INTERVAL;
-    }
+        my $album_dir = $img->{album_hash} || '';
+        my $file_name = $img->{file_name};
+        mkdir "$directory/$album_dir" unless -e "$directory/$album_dir";
+        my $path = join '/', grep $_, ($directory, $album_dir, $file_name);
+        unless (-e $path) {
+            print 'Downloading ' . $img->{url} . " to $path\n";
+            $mech->get($img->{url}, ':content_file' => "$path");
+            sleep INTERVAL;
+        }
 	    else{
 		    print "File already exists..." . $img->{file_name} . "\n";
 	    }
@@ -112,17 +122,19 @@ sub get_next_page {
 sub get_image_links {
     my ($url) = @_;
     my @images;
-    if ($url =~ m{ imgur\.com/a/ [^/]+ /?$ }ix) {
-        my ($json) = ($mech->content =~ m{ images: \s+ (.+?) ,\s* cover: }isx);
+    if (my ($album) = $url =~ m{ imgur\.com/a/ ([^/]+) /?$ }ix) {
+        $mech->get($url);
+        my ($json) = ($mech->content =~ m{ \b images \s* : \s* (.+?) , \s* cover \s* : }isx);
         my $struct = eval { $json && JSON->new->allow_nonref->utf8->relaxed->decode($json) };
         if ($struct) {
             foreach my $item (@{$struct->{items}}) {
-                my %info;
+                my %info = (album_hash => $album);
                 $info{file_name} = $item->{hash} . $item->{ext};
                 $info{url} = 'http://imgur.com/' . $info{file_name};
                 push @images, \%info if $info{url} && $info{file_name};
             }
         }
+        $mech->back;
     }
     elsif ($url =~ m{ imgur\.com/ ([^/\.]+) (\. [^/\.]+)? /?$ }ix) {
         my %info;
