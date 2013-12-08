@@ -97,9 +97,10 @@ foreach my $sub (@ARGV) {
 
     print "Extracted " . @links . " images from $type $sub\n";
 
+    my %album_seen;
     foreach my $img (@links) {
         my $album_dir = $img->{album_hash} || '';
-        my $file_name = $img->{file_name};
+        my $file_name = $album_dir ? ++$album_seen{$album_dir} . $img->{ext} : $img->{file_name};
         mkdir "$directory/$album_dir" unless -e "$directory/$album_dir";
         my $path = join '/', grep $_, ($directory, $album_dir, $file_name);
         unless (-e $path) {
@@ -137,7 +138,7 @@ sub get_image_links {
         my $struct = eval { $json && JSON->new->allow_nonref->utf8->relaxed->decode($json) };
         if ($struct) {
             foreach my $item (@{$struct->{items}}) {
-                my %info = (album_hash => $album);
+                my %info = (album_hash => $album, %$item);
                 $info{file_name} = $item->{hash} . $item->{ext};
                 $info{url} = 'http://imgur.com/' . $info{file_name};
                 push @images, \%info if $info{url} && $info{file_name};
