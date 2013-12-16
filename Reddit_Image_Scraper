@@ -40,32 +40,53 @@ my $limit = $opt_l || 1000;
 
 foreach my $sub (@ARGV) {
 
-    # Create the directory if necessary.
-    our($url,@links,$directory);
     our $count = 0;
-    if($opt_u){
-	    $directory = "user_".$sub;
-	    $url = "http://www.reddit.com/user/$sub/.json?limit=100"
+    my $url = URI->new('http://www.reddit.com/');
+    my %url_form = (limit => 1000);
+
+    my $type = $opt_u ? 'user' : $opt_q ? 'search' : 'subreddit';
+    if ($type eq 'search') {
+        ## when adding support for i.minus.com
+        # add the domain to @domains list
+        my @domains      = qw(imgur.com);
+        my $search_query = $sub;
+        $search_query .= ' (' . join(' OR ', map {"site:$_"} @domains) . ')';
+        $url_form{q} = $search_query;
     }
-    elsif($opt_q){
-        $sub =~ s/\s/+/g;
-        $directory = "search_".$sub;
-        $url = "http://www.reddit.com/search/.json?q=$sub&limit=100";
-        print "$url\n";
-    }
-    else{
-	    $directory = $sub;
-	    $url = "http://www.reddit.com/r/$sub/.json?limit=100";
-    }
+
+    # build url
+    $url->path(    #
+        $type   eq 'subreddit' ? "r/$sub/.json"
+        : $type eq 'user'      ? "user/$sub/.json"
+        : "$type/.json"
+    );
+    $url->query_form(\%url_form);
+
+    my @links;
+
+    # build a valid path, remove characters
+    # like a slash which would make subdirs
+    # ex: ./script -q "look at my dog/cat"
+    my $directory = $type eq 'subreddit'    #
+      ? $sub
+      : join '_',
+      grep { s/\s+/_/g; s/[^\w\-\.]//g; 1 } ($type, $sub);
+
     mkdir $directory unless -e $directory;
     do {
-        $mech->get($url);
+        $mech->get($url->as_string);
         my $json_text = JSON->new->allow_nonref->utf8->relaxed->decode($mech->text);
-        my $posts     = $json_text->{data}->{children};
-        foreach my $post (@{$posts}) {
+
+        # pull in all non-self posts
+        # we could also add a filter for only imgur domains
+        # but that depends on what sites we intend to scrape from
+        my @posts = grep { !$_->{data}{is_self} } @{$json_text->{data}->{children}};
+        foreach my $post (@posts) {
             my $uri = URI->new($post->{data}->{url}) or next;
             ## remove any paramters such as http://i.imgur.com/K7EdYrV.jpg?1
             $uri->query_form({});
+            ## remove uri fragments like #foo
+            $uri->fragment(undef);
             push @links, get_image_links($uri->as_string) if @links < $limit;
         }
         # get next page
@@ -74,19 +95,19 @@ foreach my $sub (@ARGV) {
     }
     while($url and @links < $limit);
 
-    if($opt_u){
-        print "Extracted ".@links." images from user $sub\n";
-    } elsif($opt_q){
-        print "Extracted ".@links." images from the search: $sub\n";
-    } else {
-	    print 'Extracted ' . @links . " images for download from r/$sub\n";
-    }
+    print "Extracted " . @links . " images from $type $sub\n";
+
+    my %album_seen;
     foreach my $img (@links) {
-	    unless (-e "$directory/" . $img->{file_name}) {
-        	print 'Downloading ' . $img->{url} . "\n";
-        	$mech->get($img->{url}, ':content_file' => "$directory/" . $img->{file_name});
-        	sleep INTERVAL;
-    }
+        my $album_dir = $img->{album_hash} || '';
+        my $file_name = $album_dir ? ++$album_seen{$album_dir} . $img->{ext} : $img->{file_name};
+        mkdir "$directory/$album_dir" unless -e "$directory/$album_dir";
+        my $path = join '/', grep $_, ($directory, $album_dir, $file_name);
+        unless (-e $path) {
+            print 'Downloading ' . $img->{url} . " to $path\n";
+            $mech->get($img->{url}, ':content_file' => "$path");
+            sleep INTERVAL;
+        }
 	    else{
 		    print "File already exists..." . $img->{file_name} . "\n";
 	    }
@@ -95,9 +116,8 @@ foreach my $sub (@ARGV) {
 }
 
 sub get_next_page {
-    my ($after, $url) = @_;
+    my ($after, $uri) = @_;
     return undef unless $after;
-    my $uri  = URI->new($url);
     my %form = $uri->query_form;
     my $count = $_[2];
     $_[2] = $_[2] + 100;
@@ -106,23 +126,25 @@ sub get_next_page {
     } else {
     	$uri->query_form({limit => $form{limit}, after => $after});
     }
-    return $uri->as_string;
+    return $uri;
 }
 
 sub get_image_links {
     my ($url) = @_;
     my @images;
-    if ($url =~ m{ imgur\.com/a/ [^/]+ /?$ }ix) {
-        my ($json) = ($mech->content =~ m{ images: \s+ (.+?) ,\s* cover: }isx);
+    if (my ($album) = $url =~ m{ imgur\.com/a/ ([^/]+) /?$ }ix) {
+        $mech->get($url);
+        my ($json) = ($mech->content =~ m{ \b images \s* : \s* (.+?) , \s* cover \s* : }isx);
         my $struct = eval { $json && JSON->new->allow_nonref->utf8->relaxed->decode($json) };
         if ($struct) {
             foreach my $item (@{$struct->{items}}) {
-                my %info;
+                my %info = (album_hash => $album, %$item);
                 $info{file_name} = $item->{hash} . $item->{ext};
                 $info{url} = 'http://imgur.com/' . $info{file_name};
                 push @images, \%info if $info{url} && $info{file_name};
             }
         }
+        $mech->back;
     }
     elsif ($url =~ m{ imgur\.com/ ([^/\.]+) (\. [^/\.]+)? /?$ }ix) {
         my %info;
