@@ -75,6 +75,7 @@ foreach my $sub (@ARGV) {
     mkdir $directory unless -e $directory;
     do {
         $mech->get($url->as_string);
+        die q,That subreddit doesn't exist, if $mech->uri->path eq '/subreddits/search';
         my $json_text = JSON->new->allow_nonref->utf8->relaxed->decode($mech->text);
 
         # pull in all non-self posts
