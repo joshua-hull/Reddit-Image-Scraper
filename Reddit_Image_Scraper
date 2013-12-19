@@ -75,6 +75,7 @@ foreach my $sub (@ARGV) {
     mkdir $directory unless -e $directory;
     do {
         $mech->get($url->as_string);
+        retry_last_request(3) unless $mech->success;
         die q,That subreddit doesn't exist, if $mech->uri->path eq '/subreddits/search';
         my $json_text = JSON->new->allow_nonref->utf8->relaxed->decode($mech->text);
 
@@ -158,6 +159,20 @@ sub get_image_links {
         push @images, \%info if $info{url} && $info{file_name};
     }
     return @images;
+}
+
+sub retry_last_request {
+    my $max_tries = shift;
+    my $attempts  = 0;
+    my $url       = $mech->uri->as_string;
+    until ($mech->success or $attempts == $max_tries) {
+        $attempts++;
+        print "Retrying ($attempts/$max_tries) $url...\n";
+        $mech->get($url);
+        sleep INTERVAL;
+    }
+    die "Failed to connect to $url\n" unless $mech->success;
+    return;
 }
 
 sub HELP_MESSAGE {
