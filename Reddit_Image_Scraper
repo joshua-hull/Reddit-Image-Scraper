@@ -197,13 +197,70 @@ sub retry_last_request {
     return;
 }
 
-sub HELP_MESSAGE {
-    print "Flags\n";
-    print "\t-l limit : limit the number of pictures to download. Default: 1000\n";
-    print "\t-u : process a list of users instead of a list of subreddits.\n";
-    print "\t-q : process a list of search strings. Strings may contain spaces but these must be escaped with \\ or enclosed in \"\"\n"
-}
-
 sub VERSION_MESSAGE {
     print "Reddit-Image-Scrapper version ".$version_string."\n";
 }
+
+__END__
+
+=head1 NAME
+
+Reddit_Image_Scraper - A perl script to download images hosted on the imgur.com hosting service linked from a subreddit at reddit.com Copyright (C) 2013 Joshua Hull
+
+=head1 SYNOPSIS
+
+./Reddit_Image_Scraper --sort=top --time=all pics # scrape all imgur pics from r/pics, sorted by most upvotes since all time
+./Reddit_Image_Scraper --limit=1000 pics          # scrape first 1000 imgur pics from r/pics (default sort type is 'hot')
+./Reddit_Image_Scraper --after=t3_1y5d0i pics     # scrape all images from r/pics starting AFTER the post ID of t3_1y5d0i
+
+=head1 COMMANDS
+
+=over 4
+
+=item (arguments)
+
+    ./Reddit_Image_Scraper EarthPorn
+
+Multiple arguments can be processed.  By default, these arguments will be treated as subreddits.  Setting the --user [-u] flag will treat these arguments as users instead.  Currently the script doesn't handle both subreddits and users in one call.
+
+=item -q, --query
+
+    Scrape images only matching the given query.  Note that string may contain spaces, but it must be enclosed in quotes (or you can escape the whitespace).
+
+=item -u, --user
+
+    By default, we treat @ARGV as a list of subreddits, but when the C<-u|--user> flag is set, these are treat as user pages.
+
+=item -l, --limit
+
+    How many images do you want?  Default is 1,000.
+
+=item -s, --sort
+
+    This tells the script *how* to sort a subreddit.  Valid options include new, rising, controversial, top
+
+=item -t, --time
+
+    This is the time to sort a subreddit by.  Valid options include hour, week, month, year, all
+
+    C<-s|--sort> is required in order to use C<-t|--time>
+
+=item -a, --after
+
+Scrape images AFTER a post with the given ID.
+
+Q: How do I find the ID of a post?
+
+A: IDs looks like "t3_1y5d0i".  If you look in the HTML, each post should have a tag similar to this one:
+
+    <div class=" thing id-t3_1y5d0i odd link " data-downs="26614" data-ups="30566" data-fullname="t3_1y5d0i" onclick="click_thing(this)">
+
+The ID we want is in @data-fullname attribute, so we can pass C<-a|--after> as t3_1y5d0i
+
+=item -h, --help
+
+Useless argument which tells you to run perldoc
+
+=back
+
+=cut
