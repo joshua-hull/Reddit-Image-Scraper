@@ -19,13 +19,35 @@
 
 use strict;
 use warnings;
+use feature 'say';
 
 use JSON;
 use WWW::Mechanize;
 use URI;
-use Getopt::Std;
+use Getopt::Long qw(:config auto_abbrev);
 
-use constant INTERVAL => 2;
+# in order for LIMIT to see $opt_l, we need to pass options in BEGIN
+# maybe we can come up with a less sloppy solution (i.e less global vars)
+my ($opt_u, $opt_q, $opt_l, $opt_s, $opt_t, $opt_a);
+BEGIN {
+    ## TODO we should probably do some validation checks
+    GetOptions(
+        "user"    => \$opt_u,
+        "query"   => \$opt_q,
+        "limit=i" => \$opt_l,
+        "sort=s"  => \$opt_s,
+        "time=s"  => \$opt_t,
+        "after=s" => \$opt_a,
+        "help"    => sub { say "run perldoc on this file to see documentation" },
+    ) or die "Error in args?\n";
+    die '--time [-t] option can only be set when --sort [-s] option has a value'
+      if $opt_t and not $opt_s;
+}
+
+use constant {
+    INTERVAL => 2,
+    LIMIT    => $opt_l || 1000,
+};
 
 my $version_string = "2013.10.18";
 
@@ -33,16 +55,16 @@ my $user_agent = "Reddit_Image_Scraper/".$version_string." by /u/hyperspace290";
 
 my $mech = WWW::Mechanize->new(autocheck=>0,agent=>$user_agent);
 
-$Getopt::Std::STANDARD_HELP_VERSION = 1;
-getopts('ul:q');
-our($opt_u,$opt_l,$opt_q);
-my $limit = $opt_l || 1000;
-
+# TODO break up this loop into smaller subroutines
 foreach my $sub (@ARGV) {
 
     our $count = 0;
     my $url = URI->new('http://www.reddit.com/');
-    my %url_form = (limit => 1000);
+    my %url_form = (
+        t     => $opt_t,
+        after => $opt_a,
+        sort  => $opt_s,
+    );
 
     my $type = $opt_u ? 'user' : $opt_q ? 'search' : 'subreddit';
     if ($type eq 'search') {
@@ -56,7 +78,7 @@ foreach my $sub (@ARGV) {
 
     # build url
     $url->path(    #
-        $type   eq 'subreddit' ? "r/$sub/.json"
+        $type   eq 'subreddit' ? 'r/' . join('/', grep $_, ($sub, $opt_s)) . '.json'
         : $type eq 'user'      ? "user/$sub/.json"
         : "$type/.json"
     );
@@ -89,13 +111,13 @@ foreach my $sub (@ARGV) {
             $uri->query_form({});
             ## remove uri fragments like #foo
             $uri->fragment(undef);
-            push @links, get_image_links($uri->as_string) if @links < $limit;
+            push @links, get_image_links($uri->as_string) if @links < LIMIT;
         }
         # get next page
         $url = get_next_page($json_text->{data}{after}, $url,$count);
    	    sleep INTERVAL;
     }
-    while($url and @links < $limit);
+    while($url and @links < LIMIT);
 
     print "Extracted " . @links . " images from $type $sub\n";
 
@@ -175,13 +197,70 @@ sub retry_last_request {
     return;
 }
 
-sub HELP_MESSAGE {
-    print "Flags\n";
-    print "\t-l limit : limit the number of pictures to download. Default: 1000\n";
-    print "\t-u : process a list of users instead of a list of subreddits.\n";
-    print "\t-q : process a list of search strings. Strings may contain spaces but these must be escaped with \\ or enclosed in \"\"\n"
-}
-
 sub VERSION_MESSAGE {
     print "Reddit-Image-Scrapper version ".$version_string."\n";
 }
+
+__END__
+
+=head1 NAME
+
+Reddit_Image_Scraper - A perl script to download images hosted on the imgur.com hosting service linked from a subreddit at reddit.com Copyright (C) 2013 Joshua Hull
+
+=head1 SYNOPSIS
+
+./Reddit_Image_Scraper --sort=top --time=all pics # scrape all imgur pics from r/pics, sorted by most upvotes since all time
+./Reddit_Image_Scraper --limit=1000 pics          # scrape first 1000 imgur pics from r/pics (default sort type is 'hot')
+./Reddit_Image_Scraper --after=t3_1y5d0i pics     # scrape all images from r/pics starting AFTER the post ID of t3_1y5d0i
+
+=head1 COMMANDS
+
+=over 4
+
+=item (arguments)
+
+    ./Reddit_Image_Scraper EarthPorn
+
+Multiple arguments can be processed.  By default, these arguments will be treated as subreddits.  Setting the --user [-u] flag will treat these arguments as users instead.  Currently the script doesn't handle both subreddits and users in one call.
+
+=item -q, --query
+
+    Scrape images only matching the given query.  Note that string may contain spaces, but it must be enclosed in quotes (or you can escape the whitespace).
+
+=item -u, --user
+
+    By default, we treat @ARGV as a list of subreddits, but when the C<-u|--user> flag is set, these are treat as user pages.
+
+=item -l, --limit
+
+    How many images do you want?  Default is 1,000.
+
+=item -s, --sort
+
+    This tells the script *how* to sort a subreddit.  Valid options include new, rising, controversial, top
+
+=item -t, --time
+
+    This is the time to sort a subreddit by.  Valid options include hour, week, month, year, all
+
+    C<-s|--sort> is required in order to use C<-t|--time>
+
+=item -a, --after
+
+Scrape images AFTER a post with the given ID.
+
+Q: How do I find the ID of a post?
+
+A: IDs looks like "t3_1y5d0i".  If you look in the HTML, each post should have a tag similar to this one:
+
+    <div class=" thing id-t3_1y5d0i odd link " data-downs="26614" data-ups="30566" data-fullname="t3_1y5d0i" onclick="click_thing(this)">
+
+The ID we want is in @data-fullname attribute, so we can pass C<-a|--after> as t3_1y5d0i
+
+=item -h, --help
+
+Useless argument which tells you to run perldoc
+
+=back
+
+=cut
